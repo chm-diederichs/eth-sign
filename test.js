@@ -28,14 +28,46 @@ test('verify: vectors', t => {
 
   for (let v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
     var tx = format(v)
-    var chainId = tx.v[0] > 30 ? 1 : null
-    t.ok(signer.verify(tx, chainId))
+    t.ok(signer.verify(tx))
   }
 
   t.end()
 })
 
-test('verify: vectors', t => {
+test('verify: vectors raw buffer', t => {
+  var raw = Buffer.from('f86c81dc8501984ab39182520894361c7a56cb86ac9c3fe3f47504ac1da63fc6137f872516ff52ce08008026a0e74da2d5c587083586fa877627c47b5925c1e60453bf83601a55f9775415c142a0187e9e8a3b36677961669841bb1f3005cd6578af0e0f7fc7b164b0bd06e6382d', 'hex')
+  t.ok(signer.verify(raw))
+
+  for (let v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
+    t.ok(signer.verify(v))
+  }
+
+  t.end()
+})
+
+test('verify: vectors raw string', t => {
+  var raw = Buffer.from('f86c81dc8501984ab39182520894361c7a56cb86ac9c3fe3f47504ac1da63fc6137f872516ff52ce08008026a0e74da2d5c587083586fa877627c47b5925c1e60453bf83601a55f9775415c142a0187e9e8a3b36677961669841bb1f3005cd6578af0e0f7fc7b164b0bd06e6382d', 'hex')
+  t.ok(signer.verify(raw))
+
+  for (let v of vectors.map(a => a.slice(2))) {
+    t.ok(signer.verify(v))
+  }
+
+  t.end()
+})
+
+test("verify: vectors raw string with '0x'", t => {
+  var raw = Buffer.from('f86c81dc8501984ab39182520894361c7a56cb86ac9c3fe3f47504ac1da63fc6137f872516ff52ce08008026a0e74da2d5c587083586fa877627c47b5925c1e60453bf83601a55f9775415c142a0187e9e8a3b36677961669841bb1f3005cd6578af0e0f7fc7b164b0bd06e6382d', 'hex')
+  t.ok(signer.verify(raw))
+
+  for (let v of vectors) {
+    t.ok(signer.verify(v))
+  }
+
+  t.end()
+})
+
+test('sign: vectors', t => {
   for (let v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
     var key = crypto.randomBytes(32)
     var tx = format(v, false)

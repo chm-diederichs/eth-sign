@@ -26,18 +26,26 @@ function sign (tx, privKey, chainId) {
   }
 }
 
-function verify (tx, chainId) {
+function verify (tx) {
+  if (tx instanceof Uint8Array || typeof tx === 'string') {
+    var obj = format(tx)
+    return verify(obj)
+  }
+
+  var v = tx.v instanceof Uint8Array ? parseNumber(tx.v) : tx.v
+
+  var chainId = getChainId(v)
+  var parity = chainId ? v - (2 * chainId + 35) : v - 27
+
   var txDigest = digest(tx, chainId)
   if (!chainId) txDigest = txDigest.slice(0, 6)
+
   var sigHash = rlpHash(txDigest)
-  
-  var v = tx.v instanceof Uint8Array ? parseNumber(tx.v) : tx.v
-  var recovery = chainId ? v - (2 * chainId + 35) : v - 27
 
   var sig = Buffer.alloc(65)
   sig.set(reverse(tx.r))
   sig.set(reverse(tx.s), 32)
-  sig.writeUInt8(recovery, 64)
+  sig.writeUInt8(parity, 64)
   
   return ecverify(sigHash, sig)
 }
@@ -54,11 +62,11 @@ function ecsign (digest, privKey, chainId) {
 
   secp.secp256k1_ecdsa_sign_recoverable(ctx, sig, digest, privKey)
 
-  var recovery = sig.readUInt8(64)
+  var parity = sig.readUInt8(64)
 
   obj.r = reverse(sig.slice(0, 32))
   obj.s = reverse(sig.slice(32, 64))
-  obj.v = chainId ? recovery + (chainId * 2 + 35) : recovery + 27
+  obj.v = chainId ? parity + (chainId * 2 + 35) : parity + 27
 
   return obj
 }
@@ -102,6 +110,8 @@ function digest (obj, chainId) {
 }
 
 function parseNumber (buf) {
+  if (!buf) return null
+
   switch (buf.byteLength) {
     case 1:
       return buf.readUInt8()
@@ -135,4 +145,39 @@ function reverse (buf) {
   }
 
   return buf
+}
+
+function format (raw) {
+  if (typeof raw === 'string') raw = Buffer.from(parseHex(raw), 'hex')
+  assert(raw instanceof Uint8Array && raw.byteLength,
+    'tx should be passed as bytes or a hex encoded string')
+
+  var items = rlp.decode(raw)
+
+  var obj = {}
+  obj.nonce = Buffer.from([items[0]])
+  obj.gasPrice = items[1]
+  obj.gasLimit = items[2]
+  obj.to = items[3]
+  obj.value = items[4]
+  obj.data = items[5]
+  obj.v = Buffer.from([items[6]])
+  obj.r = items[7]
+  obj.s = items[8]
+
+  return obj
+}
+
+function getChainId (v) {
+  if (v - 27 > 1) {
+    var parity = v - 35 % 2
+    return (v - 35 - parity) / 2 
+  }
+
+  return null
+}
+
+function parseHex (str) {
+  if (str.slice(0, 2) === '0x') return str.slice(2)
+  return str
 }

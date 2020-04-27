@@ -29,7 +29,9 @@ var privKey = crypto.randomBytes(32)
 var chainId = 1 // mainnet
 const signed = signer.sign(tx, privKey, chainId) // specify chainId for EIP155 digest
 
-signer.verify(signed.tx, chainId) // true
+signer.verify(signed.tx) // true
+signer.verify(signed.raw) // true
+signer.verify(signed.raw.toString('hex')) // true
 
 ```
 
@@ -55,9 +57,9 @@ Sign a `tx` using `privKey`. Returns `{ tx, raw }`, with `raw` being the bytecod
 
 All fields in `tx` MUST be passed as `buffer`s. `chainId` may be specified to implement EIP155 signature digest, otherwise legacy digest is used by default.
 
-#### `signer.verify(tx, [chainId])`
+#### `signer.verify(tx)`
 
-Verify a signed `tx`. `tx` should be a signed tx object as above, except `tx.hash` is NOT necessary. Returns a boolean. If the `tx` was signed according to EIP155, `chainId` MUST be specified as a `number` for verification to succeed.
+Verify a signed `tx`. `tx` should be a signed tx object as above, or a raw tx encoded as a hex string or in a `buffer`. Returns `true` if verification succeeds, `false` otherwise.
 
 ## License
 
