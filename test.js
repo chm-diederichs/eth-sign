@@ -39,11 +39,26 @@ test('sign: string input', t => {
 test('verify: vectors', t => {
   var raw = Buffer.from('f86c81dc8501984ab39182520894361c7a56cb86ac9c3fe3f47504ac1da63fc6137f872516ff52ce08008026a0e74da2d5c587083586fa877627c47b5925c1e60453bf83601a55f9775415c142a0187e9e8a3b36677961669841bb1f3005cd6578af0e0f7fc7b164b0bd06e6382d', 'hex')
   var tx = format(raw)
+
   var chainId = tx.v[0] > 30 ? 1 : null
   t.ok(signer.verify(tx, chainId))
 
   for (let v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
     var tx = format(v)
+    t.ok(signer.verify(tx))
+  }
+
+  t.end()
+})
+
+test('verify: vectors', t => {
+  var raw = Buffer.from('f86c81dc8501984ab39182520894361c7a56cb86ac9c3fe3f47504ac1da63fc6137f872516ff52ce08008026a0e74da2d5c587083586fa877627c47b5925c1e60453bf83601a55f9775415c142a0187e9e8a3b36677961669841bb1f3005cd6578af0e0f7fc7b164b0bd06e6382d', 'hex')
+  var tx = format(raw, true, true)
+  var chainId = tx.v[0] > 30 ? 1 : null
+  t.ok(signer.verify(tx, chainId))
+
+  for (let v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
+    var tx = format(v, true, true)
     t.ok(signer.verify(tx))
   }
 
@@ -84,8 +99,13 @@ test('sign: vectors', t => {
   t.end()
 })
 
-function format (str, toVerify = true) {
+function format (str, toVerify = true, string = false) {
   var items = rlp.decode(str)
+
+  if (string) items = items.map(a => 
+    typeof a === 'number'
+      ? '0x' + a.toString(16)
+      : '0x' + a.toString('hex'))
 
   var obj = {}
   obj.nonce = Buffer.from([items[0]])
@@ -100,6 +120,9 @@ function format (str, toVerify = true) {
     obj.r = items[7]
     obj.s = items[8]
   }
+
+  if (string) obj.nonce = '0x' + obj.nonce.toString('hex')
+    if (string && obj.v) obj.v = '0x' + obj.v.toString('hex')
 
   format.v = items[6]
   return obj

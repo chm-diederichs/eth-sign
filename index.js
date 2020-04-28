@@ -41,10 +41,10 @@ function verify (tx) {
   if (!chainId) txDigest = txDigest.slice(0, 6)
 
   var sigHash = rlpHash(txDigest)
-
+  
   var sig = Buffer.alloc(65)
-  sig.set(reverse(tx.r))
-  sig.set(reverse(tx.s), 32)
+  sig.set(reverse(parseHex(tx.r)))
+  sig.set(reverse(parseHex(tx.s)), 32)
   sig.writeUInt8(parity, 64)
   
   return ecverify(sigHash, sig)
@@ -101,9 +101,9 @@ function digest (obj, chainId) {
     items.push(Buffer.alloc(0))
   } else {
     // serialise signature if present
-    if (obj.v) items.push(Buffer.from([obj.v]))
-    if (obj.r) items.push(obj.r)
-    if (obj.s) items.push(obj.s)
+    if (obj.v) items.push(Buffer.from([parseHex(obj.v)]))
+    if (obj.r) items.push(parseHex(obj.r))
+    if (obj.s) items.push(parseHex(obj.s))
   }
 
   return items
