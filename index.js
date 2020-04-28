@@ -87,12 +87,12 @@ function ecverify (digest, sig) {
 function digest (obj, chainId) {
   var items = []
 
-  items.push(obj.nonce)
-  items.push(obj.gasPrice)
-  items.push(obj.gasLimit)
-  items.push(obj.to)
-  items.push(obj.value)
-  items.push(obj.data)
+  items.push(parseHex(obj.nonce))
+  items.push(parseHex(obj.gasPrice))
+  items.push(parseHex(obj.gasLimit))
+  items.push(parseHex(obj.to))
+  items.push(parseHex(obj.value))
+  items.push(parseHex(obj.data))
 
   // implement EIP155
   if (chainId) {
@@ -148,7 +148,7 @@ function reverse (buf) {
 }
 
 function format (raw) {
-  if (typeof raw === 'string') raw = Buffer.from(parseHex(raw), 'hex')
+  if (typeof raw === 'string') raw = parseHex(raw)
   assert(raw instanceof Uint8Array && raw.byteLength,
     'tx should be passed as bytes or a hex encoded string')
 
@@ -178,6 +178,6 @@ function getChainId (v) {
 }
 
 function parseHex (str) {
-  if (str.slice(0, 2) === '0x') return str.slice(2)
+  if (str[1] === 'x') return Buffer.from(str.slice(2), 'hex')
   return str
 }
