@@ -5,7 +5,8 @@ const assert = require('nanoassert')
 
 module.exports = {
   sign,
-  verify
+  verify,
+  format
 }
 
 function sign (tx, privKey, chainId) {
@@ -41,8 +42,8 @@ function verify (tx) {
   if (!chainId) txDigest = txDigest.slice(0, 6)
 
   var sigHash = rlpHash(txDigest)
-  
   var sig = Buffer.alloc(65)
+
   sig.set(reverse(parseHex(tx.r)))
   sig.set(reverse(parseHex(tx.s)), 32)
   sig.writeUInt8(parity, 64)
@@ -85,20 +86,27 @@ function ecverify (digest, sig) {
 }
 
 function digest (obj, chainId) {
+  var empty = Buffer.alloc(0)
   var items = []
 
-  items.push(parseHex(obj.nonce))
-  items.push(parseHex(obj.gasPrice))
-  items.push(parseHex(obj.gasLimit))
+  var gas = obj.gas || obj.gasLimit
+  var data = obj.data || empty
+  var value = obj.value || empty
+
+  assert(obj.data || obj.value, 'tx needs either data or value field')
+
+  items.push(stripLeadZeros(parseHex(obj.nonce)))
+  items.push(stripLeadZeros(parseHex(obj.gasPrice)))
+  items.push(stripLeadZeros(parseHex(gas)))
   items.push(parseHex(obj.to))
-  items.push(parseHex(obj.value))
-  items.push(parseHex(obj.data))
+  items.push(stripLeadZeros(obj.value))
+  items.push(parseHex(data))
 
   // implement EIP155
   if (chainId) {
     items.push(Buffer.from([chainId]))
-    items.push(Buffer.alloc(0))
-    items.push(Buffer.alloc(0))
+    items.push(empty)
+    items.push(empty)
   } else {
     // serialise signature if present
     if (obj.v) items.push(Buffer.from([parseHex(obj.v)]))
@@ -152,16 +160,16 @@ function format (raw) {
   assert(raw instanceof Uint8Array && raw.byteLength,
     'tx should be passed as bytes or a hex encoded string')
 
-  var items = rlp.decode(raw)
+  var items = rlp.decode(raw).map(toBuffer)
 
   var obj = {}
-  obj.nonce = Buffer.from([items[0]])
+  obj.nonce = items[0]
   obj.gasPrice = items[1]
-  obj.gasLimit = items[2]
+  obj.gas = obj.gasLimit = items[2]
   obj.to = items[3]
   obj.value = items[4]
   obj.data = items[5]
-  obj.v = Buffer.from([items[6]])
+  obj.v = items[6]
   obj.r = items[7]
   obj.s = items[8]
 
@@ -180,4 +188,33 @@ function getChainId (v) {
 function parseHex (str) {
   if (str[1] === 'x') return Buffer.from(str.slice(2), 'hex')
   return str
+}
+
+function stripLeadZeros (buf) {
+  if (typeof buf === 'string') return stripLeadZeros(Buffer.from(parseHex(buf), 'hex'))
+
+  var i = 0
+  while (i < buf.byteLength) {
+    if (buf[i] !== 0) break
+    i++
+  }
+
+  return buf.slice(i)
+}
+
+function toBuffer (a) {
+  if (a instanceof Uint8Array) return a
+
+  switch (typeof a) {
+    case 'string' :
+      return Buffer.from(parseHex(a)) 
+      
+    case 'number' :
+      var buf = Buffer.alloc(4)
+      buf.writeUInt32BE(a)
+      return stripLeadZeros(buf)
+
+    default :
+      throw new Error('unexpected type: ' + typeof a)   
+  }
 }

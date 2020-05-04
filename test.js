@@ -1,22 +1,26 @@
 const signer = require('./')
 const crypto = require('crypto')
+const secp = require('secp256k1-native')
+const { rlp } = require('eth-serde')
 const test = require('tape')
-const rlp = require('eth-serde').rlp
 const vectors = require('./vectors.json')
+
+var ctx = secp.secp256k1_context_create(secp.secp256k1_context_SIGN)
 
 test('sign', t => {
   var tx = {
-    nonce: Buffer.from('00', 'hex'),
-    gasPrice: Buffer.from('09184e72a000', 'hex'),
-    gasLimit: Buffer.from('2710', 'hex'),
+    nonce: Buffer.from('0080', 'hex'),
+    gasPrice: Buffer.from('0009184e72a000', 'hex'),
+    gasLimit: Buffer.from('002710', 'hex'),
     to: Buffer.from('0000000000000000000000000000000000000000', 'hex'),
     value: Buffer.from('00', 'hex'),
-    data: Buffer.from('7f7465737432000000000000000000000000000000000000000000000000000000600057', 'hex'),
+    data: Buffer.from('000000000000000000000000000000000000000000000000000000600057', 'hex'),
   }
 
   var privKey = crypto.randomBytes(32)
   const signed = signer.sign(tx, privKey)
   t.ok(signer.verify(signed.tx))
+
   t.end()
 })
 
