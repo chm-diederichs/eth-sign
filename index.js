@@ -115,8 +115,8 @@ function digest (obj, chainId) {
   } else {
     // serialise signature if present
     if (obj.v) items.push(Buffer.from([parseHex(obj.v)]))
-    if (obj.r) items.push(parseHex(obj.r))
-    if (obj.s) items.push(parseHex(obj.s))
+    if (obj.r) items.push(stripLeadZeros(parseHex(obj.r)))
+    if (obj.s) items.push(stripLeadZeros(parseHex(obj.s)))
   }
 
   return items
@@ -175,10 +175,19 @@ function format (raw) {
   obj.value = items[4]
   obj.data = items[5]
   obj.v = items[6]
-  obj.r = items[7]
-  obj.s = items[8]
+  obj.r = toLengthBufferBE(32, items[7])
+  obj.s = toLengthBufferBE(32, items[8])
 
   return obj
+}
+
+function toLengthBufferBE (len, item) {
+  assert(item instanceof Uint8Array)
+
+  var buf = Buffer.alloc(len)
+  buf.set(item, len - item.byteLength)
+  
+  return buf
 }
 
 function getChainId (v) {
