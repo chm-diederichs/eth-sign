@@ -1,20 +1,17 @@
 const signer = require('./')
 const crypto = require('crypto')
-const secp = require('secp256k1-native')
 const { rlp } = require('eth-serde')
 const test = require('tape')
 const vectors = require('./vectors.json')
 
-var ctx = secp.secp256k1_context_create(secp.secp256k1_context_SIGN)
-
 test('sign', t => {
   var tx = {
-    nonce: Buffer.from('0080', 'hex'),
+    nonce: 'ca1',
     gasPrice: Buffer.from('0009184e72a000', 'hex'),
     gasLimit: Buffer.from('002710', 'hex'),
     to: Buffer.from('0000000000000000000000000000000000000000', 'hex'),
     value: Buffer.from('00', 'hex'),
-    data: Buffer.from('000000000000000000000000000000000000000000000000000000600057', 'hex'),
+    data: Buffer.from('000000000000000000000000000000000000000000000000000000600057', 'hex')
   }
 
   var privKey = crypto.randomBytes(32)
@@ -47,8 +44,8 @@ test('verify: vectors', t => {
   var chainId = tx.v[0] > 30 ? 1 : null
   t.ok(signer.verify(tx, chainId))
 
-  for (let v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
-    var tx = format(v)
+  for (const v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
+    tx = format(v)
     t.ok(signer.verify(tx))
   }
 
@@ -61,8 +58,8 @@ test('verify: vectors', t => {
   var chainId = tx.v[0] > 30 ? 1 : null
   t.ok(signer.verify(tx, chainId))
 
-  for (let v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
-    var tx = format(v, true, true)
+  for (const v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
+    tx = format(v, true, true)
     t.ok(signer.verify(tx))
   }
 
@@ -73,7 +70,7 @@ test('verify: vectors raw buffer', t => {
   var raw = Buffer.from('f86c81dc8501984ab39182520894361c7a56cb86ac9c3fe3f47504ac1da63fc6137f872516ff52ce08008026a0e74da2d5c587083586fa877627c47b5925c1e60453bf83601a55f9775415c142a0187e9e8a3b36677961669841bb1f3005cd6578af0e0f7fc7b164b0bd06e6382d', 'hex')
   t.ok(signer.verify(raw))
 
-  for (let v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
+  for (const v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
     t.ok(signer.verify(v))
   }
 
@@ -84,7 +81,7 @@ test("verify: vectors raw string with '0x'", t => {
   var raw = Buffer.from('f86c81dc8501984ab39182520894361c7a56cb86ac9c3fe3f47504ac1da63fc6137f872516ff52ce08008026a0e74da2d5c587083586fa877627c47b5925c1e60453bf83601a55f9775415c142a0187e9e8a3b36677961669841bb1f3005cd6578af0e0f7fc7b164b0bd06e6382d', 'hex')
   t.ok(signer.verify(raw))
 
-  for (let v of vectors) {
+  for (const v of vectors) {
     t.ok(signer.verify(v))
   }
 
@@ -92,7 +89,7 @@ test("verify: vectors raw string with '0x'", t => {
 })
 
 test('sign: vectors', t => {
-  for (let v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
+  for (const v of vectors.map(a => Buffer.from(a.slice(2), 'hex'))) {
     var key = crypto.randomBytes(32)
     var tx = format(v, false)
     var chainId = format.v > 30 ? 1 : null
@@ -106,10 +103,12 @@ test('sign: vectors', t => {
 function format (str, toVerify = true, string = false) {
   var items = rlp.decode(str)
 
-  if (string) items = items.map(a => 
-    typeof a === 'number'
-      ? '0x' + a.toString(16)
-      : '0x' + a.toString('hex'))
+  if (string) {
+    items = items.map(a =>
+      typeof a === 'number'
+        ? '0x' + a.toString(16)
+        : '0x' + a.toString('hex'))
+  }
 
   var obj = {}
   obj.nonce = Buffer.from([items[0]])
@@ -126,7 +125,7 @@ function format (str, toVerify = true, string = false) {
   }
 
   if (string) obj.nonce = '0x' + obj.nonce.toString('hex')
-    if (string && obj.v) obj.v = '0x' + obj.v.toString('hex')
+  if (string && obj.v) obj.v = '0x' + obj.v.toString('hex')
 
   format.v = items[6]
   return obj

@@ -4,6 +4,7 @@
   "description": "module for signing eth transactions",
   "main": "index.js",
   "scripts": {
+    "pretest": "standard",
     "test": "node test"
   },
   "author": "",

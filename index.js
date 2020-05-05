@@ -6,19 +6,22 @@ const assert = require('nanoassert')
 module.exports = {
   sign,
   verify,
-  format
+  format,
+  SECKEYBYTES: secp.secp256k1_SECKEYBYTES
 }
 
 function sign (tx, privKey, chainId) {
-  var txDigest = digest(tx, chainId)
-  var sigHash = rlpHash(txDigest)
-  var sig = ecsign(sigHash, privKey, chainId)
+  assert(tx, 'tx must be given.')
+  assert(privKey.byteLength === secp.secp256k1_SECKEYBYTES, '')
+  assert(chainId == null ? true : chainId >>> 0 < 110, 'chainId must be less than 110')
 
-  var obj = {}
-  Object.assign(obj, tx)
-  Object.assign(obj, sig)
+  const txDigest = digest(tx, chainId)
+  const sigHash = rlpHash(txDigest)
+  const sig = ecsign(sigHash, privKey, chainId)
 
-  var raw = rlp.encode(digest(obj))
+  const obj = Object.assign({}, tx, sig)
+
+  const raw = rlp.encode(digest(obj))
   obj.hash = keccak().update(raw).digest()
 
   return {
@@ -29,25 +32,24 @@ function sign (tx, privKey, chainId) {
 
 function verify (tx) {
   if (tx instanceof Uint8Array || typeof tx === 'string') {
-    var obj = format(tx)
-    return verify(obj)
+    return verify(format(tx))
   }
 
-  var v = tx.v instanceof Uint8Array ? parseNumber(tx.v) : tx.v
+  const v = tx.v instanceof Uint8Array ? parseNumber(tx.v) : tx.v
 
-  var chainId = getChainId(v)
-  var parity = chainId ? v - (2 * chainId + 35) : v - 27
+  const chainId = getChainId(v)
+  const parity = chainId ? v - (2 * chainId + 35) : v - 27
 
-  var txDigest = digest(tx, chainId)
+  let txDigest = digest(tx, chainId)
   if (!chainId) txDigest = txDigest.slice(0, 6)
 
-  var sigHash = rlpHash(txDigest)
-  var sig = Buffer.alloc(65)
+  const sigHash = rlpHash(txDigest)
+  const sig = Buffer.alloc(65)
 
   sig.set(reverse(parseHex(tx.r)))
   sig.set(reverse(parseHex(tx.s)), 32)
   sig.writeUInt8(parity, 64)
-  
+
   return ecverify(sigHash, sig)
 }
 
@@ -56,14 +58,14 @@ function rlpHash (a) {
 }
 
 function ecsign (digest, privKey, chainId) {
-  var obj = {}
-  
-  var ctx = secp.secp256k1_context_create(secp.secp256k1_context_SIGN)
-  var sig = Buffer.alloc(secp.secp256k1_ecdsa_recoverable_SIGBYTES)
+  const obj = {}
+
+  const ctx = secp.secp256k1_context_create(secp.secp256k1_context_SIGN)
+  const sig = Buffer.alloc(secp.secp256k1_ecdsa_recoverable_SIGBYTES)
 
   secp.secp256k1_ecdsa_sign_recoverable(ctx, sig, digest, privKey)
 
-  var parity = sig.readUInt8(64)
+  const parity = sig.readUInt8(64)
 
   obj.r = reverse(sig.slice(0, 32))
   obj.s = reverse(sig.slice(32, 64))
@@ -73,33 +75,36 @@ function ecsign (digest, privKey, chainId) {
 }
 
 function ecverify (digest, sig) {
-  var digest
-  var pubkey = Buffer.alloc(secp.secp256k1_PUBKEYBYTES)
-  var ctx = secp.secp256k1_context_create(secp.secp256k1_context_VERIFY)
+  const pubkey = Buffer.alloc(secp.secp256k1_PUBKEYBYTES)
+  const ctx = secp.secp256k1_context_create(secp.secp256k1_context_VERIFY)
 
   secp.secp256k1_ecdsa_recover(ctx, pubkey, sig, digest)
 
-  var sig64 = Buffer.alloc(64)
+  const sig64 = Buffer.alloc(64)
   secp.secp256k1_ecdsa_recoverable_signature_convert(ctx, sig64, sig)
-  
+
   return secp.secp256k1_ecdsa_verify(ctx, sig64, digest, pubkey)
 }
 
 function digest (obj, chainId) {
-  var empty = Buffer.alloc(0)
-  var items = []
+  assert(obj.nonce)
+  assert(obj.gasPrice)
+  assert(obj.gas || obj.gasLimit)
+  assert(obj.data || obj.to)
 
-  var gas = obj.gas || obj.gasLimit
-  var data = obj.data || empty
-  var value = obj.value || empty
+  const empty = Buffer.alloc(0)
+  const items = []
 
-  assert(obj.data || obj.value, 'tx needs either data or value field')
+  const gas = obj.gas || obj.gasLimit
+  const data = obj.data || empty
+  const value = obj.value || empty
+  const to = obj.to || empty
 
   items.push(stripLeadZeros(parseHex(obj.nonce)))
   items.push(stripLeadZeros(parseHex(obj.gasPrice)))
   items.push(stripLeadZeros(parseHex(gas)))
-  items.push(parseHex(obj.to))
-  items.push(stripLeadZeros(obj.value))
+  items.push(parseHex(to))
+  items.push(stripLeadZeros(value))
   items.push(parseHex(data))
 
   // implement EIP155
@@ -134,20 +139,20 @@ function parseNumber (buf) {
       return buf.readUInt32BE()
 
     default:
-      throw new Error('failed to parse number: buffer too large')
+      assert(false, 'failed to parse number: buffer too large')
   }
 }
 
 function reverse (buf) {
-  let tmp = []
+  const tmp = []
 
-  var i
+  let i
   for (i = 0; i < Math.ceil(buf.byteLength / 2); i++) {
     tmp.push(buf[i])
-    buf[i] = buf[buf.length - 1 -i]
+    buf[i] = buf[buf.length - 1 - i]
   }
 
-  var offset = i
+  const offset = i
   for (; i < buf.byteLength; i++) {
     buf[i] = tmp[2 * offset - i - 1]
   }
@@ -156,13 +161,13 @@ function reverse (buf) {
 }
 
 function format (raw) {
-  if (typeof raw === 'string') raw = parseHex(raw)
+  if (typeof raw === 'string') return format(parseHex(raw))
   assert(raw instanceof Uint8Array && raw.byteLength,
     'tx should be passed as bytes or a hex encoded string')
 
-  var items = rlp.decode(raw).map(toBuffer)
+  const items = rlp.decode(raw).map(toBuffer)
 
-  var obj = {}
+  const obj = {}
   obj.nonce = items[0]
   obj.gasPrice = items[1]
   obj.gas = obj.gasLimit = items[2]
@@ -178,43 +183,47 @@ function format (raw) {
 
 function getChainId (v) {
   if (v - 27 > 1) {
-    var parity = v - 35 % 2
-    return (v - 35 - parity) / 2 
+    const parity = (v - 35) % 2
+    return (v - 35 - parity) / 2
   }
 
   return null
 }
 
 function parseHex (str) {
-  if (str[1] === 'x') return Buffer.from(str.slice(2), 'hex')
+  if (str[1] === 'x') return parseHex(str.slice(2))
+  if (typeof str === 'string') {
+    if (str.length % 2 !== 0) return Buffer.from('0' + str, 'hex')
+    return Buffer.from(str, 'hex')
+  }
   return str
 }
 
 function stripLeadZeros (buf) {
   if (typeof buf === 'string') return stripLeadZeros(Buffer.from(parseHex(buf), 'hex'))
 
-  var i = 0
+  let i = 0
   while (i < buf.byteLength) {
     if (buf[i] !== 0) break
     i++
   }
 
-  return buf.slice(i)
+  return buf.subarray(i)
 }
 
 function toBuffer (a) {
   if (a instanceof Uint8Array) return a
 
   switch (typeof a) {
-    case 'string' :
-      return Buffer.from(parseHex(a)) 
-      
-    case 'number' :
-      var buf = Buffer.alloc(4)
+    case 'string':
+      return Buffer.from(parseHex(a))
+
+    case 'number':
+      const buf = Buffer.alloc(4)
       buf.writeUInt32BE(a)
       return stripLeadZeros(buf)
 
-    default :
-      throw new Error('unexpected type: ' + typeof a)   
+    default:
+      assert(false, 'unexpected type: ' + typeof a)
   }
 }
