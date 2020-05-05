@@ -1,6 +1,6 @@
 {
   "name": "eth-sign",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "module for signing eth transactions",
   "main": "index.js",
   "scripts": {
