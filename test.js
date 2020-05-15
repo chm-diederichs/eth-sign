@@ -9,7 +9,7 @@ test('sign', t => {
     nonce: 'ca1',
     gasPrice: Buffer.from('0009184e72a000', 'hex'),
     gasLimit: Buffer.from('002710', 'hex'),
-    to: Buffer.from('0000000000000000000000000000000000000000', 'hex'),
+    to: Buffer.from('0000000000000000000000000000000000000001', 'hex'),
     value: Buffer.from('00', 'hex'),
     data: Buffer.from('000000000000000000000000000000000000000000000000000000600057', 'hex')
   }
